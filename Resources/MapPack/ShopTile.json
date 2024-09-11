@@ -1,0 +1,15 @@
+{
+	"searchCriterias": [
+		{
+			"searchType":"RoomFunction",
+			"searchValues":["JohnnyStoreRoomFunction"]
+		}
+	],
+	"textureName":"MapBG_Shopping",
+	"color": {
+		"R":181,
+		"G":255,
+		"B":187,
+		"A":255
+	}
+}

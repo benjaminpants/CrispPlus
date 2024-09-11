@@ -1,0 +1,15 @@
+{
+	"searchCriterias": [
+		{
+			"searchType":"RoomFunction",
+			"searchValues":["PlaygroundRoomFunction"]
+		}
+	],
+	"textureName":"MapBG_Playground",
+	"color": {
+		"R":0,
+		"G":255,
+		"B":255,
+		"A":255
+	}
+}

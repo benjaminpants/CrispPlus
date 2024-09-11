@@ -1,0 +1,15 @@
+{
+	"searchCriterias": [
+		{
+			"searchType":"Name",
+			"searchValues":["Room_ReflexOffice_0"]
+		}
+	],
+	"textureName":"MapBG_Doctor",
+	"color": {
+		"R":193,
+		"G":242,
+		"B":255,
+		"A":255
+	}
+}
