@@ -53,7 +53,7 @@ namespace CrispPlus
         ConfigEntry<bool> dietBSODAChangeEnabled;
         ConfigEntry<bool> mapTweaksEnabled;
         ConfigEntry<bool> enforceSpriteConsistency;
-        ConfigEntry<bool> hudDarkenFixEnabled;
+        ConfigEntry<bool> optionsMenuCheckmarkFix;
         public ConfigEntry<float> itemAnimationSpeed;
 
         void Awake()
@@ -102,10 +102,10 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
                 "Item Slot Animation Speed",
                 5f,
                 "The speed of the item slot animation, calculated as 1/x. Higher values make the animation faster.");
-            hudDarkenFixEnabled = Config.Bind("Hud",
-                "Hud Darkening Fix",
+            optionsMenuCheckmarkFix = Config.Bind("Hud",
+                "Options Menu Checkmark Fix",
                 true,
-                "Fixes a bug in the vanilla game where the hud will stay dark, even if you are no longer invisible.");
+                "Replaces the checkmark texture in the options menu to be a bigger, proper 32x32 texture, instead of a stretched 24x24 texture.");
             harmony.PatchAllConditionals();
         }
 
@@ -183,6 +183,18 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
                 Material[] materials = Resources.FindObjectsOfTypeAll<Material>();
                 Texture2D greenLockerFixed = AssetLoader.TextureFromMod(this, "Locker_Green_Fixed.png");
                 materials.First(x => x.name == "Locker_Green").SetMainTexture(greenLockerFixed);
+            }
+            assetMan.Add<Sprite>("checkMark", AssetLoader.SpriteFromMod(this, Vector2.one / 2f, 1f, "32xCheckmark.png"));
+            // do this here incase we can snag any prefabs that do the same thing
+            Image[] images = Resources.FindObjectsOfTypeAll<Image>();
+
+            foreach (Image image in images)
+            {
+                if (image.sprite == null) continue;
+                if (image.sprite.name == "YCTP_IndicatorsSheet_0" && image.rectTransform.sizeDelta == (Vector2.one * 32f))
+                {
+                    image.sprite = CrispyPlugin.assetMan.Get<Sprite>("checkMark");
+                }
             }
             yield return "Loading Map Tweaks...";
             if (mapTweaksEnabled.Value)
