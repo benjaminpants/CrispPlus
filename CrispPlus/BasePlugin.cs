@@ -36,7 +36,7 @@ namespace CrispPlus
     }
 
 
-    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "1.0.0.0")]
+    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.0.0.0")]
     public class CrispyPlugin : BaseUnityPlugin
     {
         internal static AssetManager assetMan = new AssetManager();
@@ -106,6 +106,11 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
                 "Options Menu Checkmark Fix",
                 true,
                 "Replaces the checkmark texture in the options menu to be a bigger, proper 32x32 texture, instead of a stretched 24x24 texture.");
+
+            Config.Bind("World",
+                "Pixel-Locked Item Bobbing",
+                false,
+                "If enabled, the item/pickup bobbing animation will be pixel locked, making it look choppier.");
             harmony.PatchAllConditionals();
         }
 
@@ -178,22 +183,24 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
             {
                 ItemMetaStorage.Instance.FindByEnum(Items.DietBsoda).value.item.GetComponentInChildren<SpriteRenderer>().sprite = AssetLoader.SpriteFromTexture2D(AssetLoader.TextureFromMod(this, "DietBsodaSprite.png"), 12f);
             }
+            Material[] materials = Resources.FindObjectsOfTypeAll<Material>();
             if (greenLockerFixEnabled.Value)
             {
-                Material[] materials = Resources.FindObjectsOfTypeAll<Material>();
                 Texture2D greenLockerFixed = AssetLoader.TextureFromMod(this, "Locker_Green_Fixed.png");
                 materials.First(x => x.name == "Locker_Green").SetMainTexture(greenLockerFixed);
             }
-            assetMan.Add<Sprite>("checkMark", AssetLoader.SpriteFromMod(this, Vector2.one / 2f, 1f, "32xCheckmark.png"));
             // do this here incase we can snag any prefabs that do the same thing
-            Image[] images = Resources.FindObjectsOfTypeAll<Image>();
-
-            foreach (Image image in images)
+            if (optionsMenuCheckmarkFix.Value)
             {
-                if (image.sprite == null) continue;
-                if (image.sprite.name == "YCTP_IndicatorsSheet_0" && image.rectTransform.sizeDelta == (Vector2.one * 32f))
+                assetMan.Add<Sprite>("checkMark", AssetLoader.SpriteFromMod(this, Vector2.one / 2f, 1f, "32xCheckmark.png"));
+                Image[] images = Resources.FindObjectsOfTypeAll<Image>();
+                foreach (Image image in images)
                 {
-                    image.sprite = CrispyPlugin.assetMan.Get<Sprite>("checkMark");
+                    if (image.sprite == null) continue;
+                    if (image.sprite.name == "YCTP_IndicatorsSheet_0" && image.rectTransform.sizeDelta == (Vector2.one * 32f))
+                    {
+                        image.sprite = CrispyPlugin.assetMan.Get<Sprite>("checkMark");
+                    }
                 }
             }
             yield return "Loading Map Tweaks...";
