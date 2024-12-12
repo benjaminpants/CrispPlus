@@ -49,6 +49,8 @@ namespace CrispPlus
         public ConfigEntry<bool> itemReticleAllowLeftClick;
         public ConfigEntry<ItemReticleType> itemReticleDisplay;
 
+        public Texture2D ventLightmap;
+
         ConfigEntry<bool> greenLockerFixEnabled;
         ConfigEntry<bool> dietBSODAChangeEnabled;
         ConfigEntry<bool> mapTweaksEnabled;
@@ -56,10 +58,15 @@ namespace CrispPlus
         ConfigEntry<bool> optionsMenuCheckmarkFix;
         public ConfigEntry<float> itemAnimationSpeed;
 
+        ConfigEntry<bool> ventLightFixEnabled;
+
+        ConfigEntry<float> ventBrightnessMultiplier;
+
         void Awake()
         {
             Harmony harmony = new Harmony("mtm101.rulerp.baldiplus.crispyplus");
-            LoadingEvents.RegisterOnAssetsLoaded(this.Info, LoadEnumerator(), true);
+            LoadingEvents.RegisterOnAssetsLoaded(Info, LoadEarlyEnumerator(), false);
+            LoadingEvents.RegisterOnAssetsLoaded(Info, LoadEnumerator(), true);
             Log = Logger;
             Instance = this;
             slotAnimConfig = Config.Bind("Hud",
@@ -111,7 +118,80 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
                 "Pixel-Locked Item Bobbing",
                 false,
                 "If enabled, the item/pickup bobbing animation will be pixel locked, making it look choppier.");
+
+            ventLightFixEnabled = Config.Bind("World",
+                "Vent Light Fix",
+                true,
+                "Fixes character lighting in vents.");
+
+            Config.Bind("World",
+                "Vent Lighting",
+                false,
+                "Adds additional lighting to vents, copying the light at the vent entrances and exits. (If your game is lagging, turn this off!)\nRequires Vent Light Fix to work.");
+
+            ventBrightnessMultiplier = Config.Bind("World",
+                "Vent Brightness",
+                1f,
+                "The multiplier for the vent brightness.\nRequires Vent Light Fix to work.");
             harmony.PatchAllConditionals();
+        }
+
+
+        // vent fieldInfos
+        static FieldInfo _ventPieceBendPrefab = AccessTools.Field(typeof(Structure_Vent), "ventPieceBendPrefab");
+        static FieldInfo _ventPieceStraightPrefab = AccessTools.Field(typeof(Structure_Vent), "ventPieceStraightPrefab");
+        static FieldInfo _ventPieceVerticalBendPrefab = AccessTools.Field(typeof(Structure_Vent), "ventPieceStraightPrefab");
+        public Color ventColor;
+
+        IEnumerator LoadEarlyEnumerator()
+        {
+            yield return 1 + (ventLightFixEnabled.Value ? 1 : 0);
+            yield return "Loading misc changes...";
+            if (dietBSODAChangeEnabled.Value)
+            {
+                ItemMetaStorage.Instance.FindByEnum(Items.DietBsoda).value.item.GetComponentInChildren<SpriteRenderer>().sprite = AssetLoader.SpriteFromTexture2D(AssetLoader.TextureFromMod(this, "DietBsodaSprite.png"), 12f);
+            }
+            Material[] materials = Resources.FindObjectsOfTypeAll<Material>();
+            if (greenLockerFixEnabled.Value)
+            {
+                Texture2D greenLockerFixed = AssetLoader.TextureFromMod(this, "Locker_Green_Fixed.png");
+                materials.First(x => x.name == "Locker_Green").SetMainTexture(greenLockerFixed);
+            }
+            if (ventLightFixEnabled.Value)
+            {
+                yield return "Loading vent fix...";
+                // get and load the appropiate vent color incase mystman12 changes it (future proofing, everyone!)
+                Structure_Vent[] foundVents = Resources.FindObjectsOfTypeAll<Structure_Vent>().Where(x => x.GetInstanceID() >= 0).ToArray();
+                ventColor = ((Transform)_ventPieceStraightPrefab.GetValue(foundVents[0])).GetComponent<MeshRenderer>().material.GetColor("_TextureColor");//0.6887 0.6887 0.5425 0;
+                ventColor.a = 1f;
+                ventColor *= ventBrightnessMultiplier.Value;
+                ventLightmap = new Texture2D(256, 256, TextureFormat.RGBA32, false);
+                ventLightmap.name = "VentLightMap";
+                Color[] colors = new Color[256 * 256];
+                for (int i = 0; i < colors.Length; i++)
+                {
+                    colors[i] = ventColor;
+                }
+                ventLightmap.SetPixels(0, 0, 256, 256, colors);
+                ventLightmap.Apply();
+                for (int i = 0; i < foundVents.Length; i++)
+                {
+                    UpdateVentRenderer((Transform)_ventPieceStraightPrefab.GetValue(foundVents[i]));
+                    UpdateVentRenderer((Transform)_ventPieceBendPrefab.GetValue(foundVents[i]));
+                    UpdateVentRenderer((Transform)_ventPieceVerticalBendPrefab.GetValue(foundVents[i]));
+                }
+                Material ventMat = materials.First(x => x.GetInstanceID() >= 0 && x.name == "Vent_Inside");
+                ventMat.SetColor("_TextureColor", new Color(1f, 1f, 1f, 0f));
+                ventMat.SetTexture("_LightMap", ventLightmap);
+            }
+        }
+
+        void UpdateVentRenderer(Transform transfm)
+        {
+            Material mat = transfm.GetComponent<MeshRenderer>().material;
+            mat.SetColor("_TextureColor", new Color(1f,1f,1f,0f));
+            mat.SetTexture("_LightMap", ventLightmap);
+            transfm.MarkAsNeverUnload();
         }
 
         IEnumerator LoadEnumerator()
@@ -179,16 +259,6 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
                 if (spriteBigReplacements.ContainsKey(objectsWithInvalidSpriteSizes[i].itemSpriteLarge)) objectsWithInvalidSpriteSizes[i].itemSpriteLarge = spriteBigReplacements[objectsWithInvalidSpriteSizes[i].itemSpriteLarge];
             }
             yield return "Loading and applying misc tweaks...";
-            if (dietBSODAChangeEnabled.Value)
-            {
-                ItemMetaStorage.Instance.FindByEnum(Items.DietBsoda).value.item.GetComponentInChildren<SpriteRenderer>().sprite = AssetLoader.SpriteFromTexture2D(AssetLoader.TextureFromMod(this, "DietBsodaSprite.png"), 12f);
-            }
-            Material[] materials = Resources.FindObjectsOfTypeAll<Material>();
-            if (greenLockerFixEnabled.Value)
-            {
-                Texture2D greenLockerFixed = AssetLoader.TextureFromMod(this, "Locker_Green_Fixed.png");
-                materials.First(x => x.name == "Locker_Green").SetMainTexture(greenLockerFixed);
-            }
             // do this here incase we can snag any prefabs that do the same thing
             if (optionsMenuCheckmarkFix.Value)
             {
