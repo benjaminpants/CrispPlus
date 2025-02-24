@@ -36,7 +36,16 @@ namespace CrispPlus
     }
 
 
-    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.0.0.0")]
+    public enum ChalklesAnimationType
+    {
+        Vanilla = 0,
+        Dither = 1,
+        Choppy = 2,
+        DitherAndChoppy = 3
+    }
+
+
+    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.1.0.0")]
     public class CrispyPlugin : BaseUnityPlugin
     {
         internal static AssetManager assetMan = new AssetManager();
@@ -48,6 +57,9 @@ namespace CrispPlus
         public ConfigEntry<ItemSlotAnimationType> slotAnimConfig;
         public ConfigEntry<bool> itemReticleAllowLeftClick;
         public ConfigEntry<ItemReticleType> itemReticleDisplay;
+        public ConfigEntry<ChalklesAnimationType> chalklesType;
+
+        public Sprite[] chalklesSprites = new Sprite[0];
 
         public Texture2D ventLightmap;
 
@@ -133,6 +145,15 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
                 "Vent Brightness",
                 1f,
                 "The multiplier for the vent brightness.\nRequires Vent Light Fix to work.");
+
+            chalklesType = Config.Bind("NPCs",
+                "Chalkles Fade Animation",
+                ChalklesAnimationType.Dither,
+                @"The type of alternate animation/fade type Chalkles will use.
+Vanilla - Chalkles fades in smoothly.
+Choppy - Chalkles fades in choppily.
+Dither - Chalkles will fade in with a dither in akin to the transitions seen in menus.
+DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.");
             harmony.PatchAllConditionals();
         }
 
@@ -145,7 +166,7 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
 
         IEnumerator LoadEarlyEnumerator()
         {
-            yield return 1 + (ventLightFixEnabled.Value ? 1 : 0);
+            yield return 1 + (ventLightFixEnabled.Value ? 1 : 0) + (chalklesType.Value.HasFlag(ChalklesAnimationType.Dither) ? 1 : 0);
             yield return "Loading misc changes...";
             if (dietBSODAChangeEnabled.Value)
             {
@@ -183,6 +204,18 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
                 Material ventMat = materials.First(x => x.GetInstanceID() >= 0 && x.name == "Vent_Inside");
                 ventMat.SetColor("_TextureColor", new Color(1f, 1f, 1f, 0f));
                 ventMat.SetTexture("_LightMap", ventLightmap);
+            }
+            if (chalklesType.Value.HasFlag(ChalklesAnimationType.Dither))
+            {
+                yield return "Loading Chalkles frames...";
+                Sprite chalklesBase = Resources.FindObjectsOfTypeAll<Sprite>().First(x => x.GetInstanceID() >= 0 && x.name == "ChalkFace");
+                List<Sprite> chalklesFrames = new List<Sprite>();
+                for (int i = 0; i < 6; i++)
+                {
+                    chalklesFrames.Add(AssetLoader.SpriteFromMod(this, chalklesBase.pivot / chalklesBase.rect.size, chalklesBase.pixelsPerUnit, "Chalkles", "ChalkFade" + (i + 1) + ".png"));
+                }
+                chalklesFrames.Add(chalklesBase);
+                chalklesSprites = chalklesFrames.ToArray();
             }
         }
 

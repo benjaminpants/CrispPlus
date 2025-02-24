@@ -36,6 +36,11 @@ namespace CrispPlus.Patches
                         SwitchEntityRenderers(vt.overrider.entity, CrispyPlugin.Instance.ventLightmap, false);
                         foreach (KeyValuePair<Renderer, Texture> kvp in comp.oldLightMaps)
                         {
+                            if (kvp.Key.material == null)
+                            {
+                                CrispyPlugin.Log.LogWarning("Entity " + vt.overrider.entity.name + " has a null material during vent patch!");
+                                continue;
+                            }
                             kvp.Key.material.SetTexture("_LightMap", kvp.Value);
                         }
                         GameObject.Destroy(comp);
