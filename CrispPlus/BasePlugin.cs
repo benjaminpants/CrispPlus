@@ -45,7 +45,7 @@ namespace CrispPlus
     }
 
 
-    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.1.0.0")]
+    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.1.0.1")]
     public class CrispyPlugin : BaseUnityPlugin
     {
         internal static AssetManager assetMan = new AssetManager();
@@ -68,6 +68,7 @@ namespace CrispPlus
         ConfigEntry<bool> mapTweaksEnabled;
         ConfigEntry<bool> enforceSpriteConsistency;
         ConfigEntry<bool> optionsMenuCheckmarkFix;
+        ConfigEntry<bool> aprilFoolsEnabled;
         public ConfigEntry<float> itemAnimationSpeed;
 
         ConfigEntry<bool> ventLightFixEnabled;
@@ -154,6 +155,11 @@ Vanilla - Chalkles fades in smoothly.
 Choppy - Chalkles fades in choppily.
 Dither - Chalkles will fade in with a dither in akin to the transitions seen in menus.
 DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.");
+
+            aprilFoolsEnabled = Config.Bind("Misc",
+                "April Fools Enabled",
+                true,
+                "Determines if the April Fools troll is enabled.");
             harmony.PatchAllConditionals();
         }
 
@@ -311,11 +317,14 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             {
                 MapTweaksHandler.LoadFolder(mapPath);
             }
-            if (DateTime.Now.Day == 1 && DateTime.Now.Month == 4)
+            if (aprilFoolsEnabled.Value)
             {
-                Resources.FindObjectsOfTypeAll<Texture2D>().Do(x => x.filterMode = FilterMode.Trilinear);
-                TMP_FontAsset ass = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().First(x => x.name.Contains("Lib"));
-                Resources.FindObjectsOfTypeAll<TMP_Text>().Do(x => x.font = ass);
+                if (DateTime.Now.Day == 1 && DateTime.Now.Month == 4)
+                {
+                    Resources.FindObjectsOfTypeAll<Texture2D>().Do(x => x.filterMode = FilterMode.Trilinear);
+                    TMP_FontAsset ass = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().First(x => x.name.Contains("Lib"));
+                    Resources.FindObjectsOfTypeAll<TMP_Text>().Do(x => x.font = ass);
+                }
             }
             yield return "Modifying prefabs...";
             FieldInfo _reticle = AccessTools.Field(typeof(HudManager), "reticle");
