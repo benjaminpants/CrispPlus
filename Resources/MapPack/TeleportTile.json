@@ -1,0 +1,15 @@
+{
+	"searchCriterias": [
+		{
+			"searchType":"RoomFunction",
+			"searchValues":["TeleporterRoomFunction"]
+		}
+	],
+	"textureName":"MapBG_Teleport",
+	"color": {
+		"R":45,
+		"G":77,
+		"B":189,
+		"A":255
+	}
+}

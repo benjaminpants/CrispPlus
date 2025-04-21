@@ -1,0 +1,15 @@
+{
+	"searchCriterias": [
+		{
+			"searchType":"RoomFunction",
+			"searchValues":["BeltRoomFunction"]
+		}
+	],
+	"textureName":"MapBG_Conveyor",
+	"color": {
+		"R":0,
+		"G":255,
+		"B":255,
+		"A":255
+	}
+}

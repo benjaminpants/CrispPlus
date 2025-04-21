@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using UnityEngine;
 
@@ -10,7 +11,7 @@ namespace CrispPlus.Patches
     [HarmonyPatch("UpdateSprite")]
     class ChalklesPatches
     {
-        static bool Prefix(float ___charge, float ___setTime, Color ___spriteColor, SpriteRenderer ___chalkRenderer)
+        static bool Prefix(ChalkFace __instance, float ___charge, float ___setTime, Color ___spriteColor, SpriteRenderer ___chalkRenderer)
         {
             if (CrispyPlugin.Instance.chalklesType.Value == ChalklesAnimationType.Vanilla) return true;
             if (CrispyPlugin.Instance.chalklesType.Value.HasFlag(ChalklesAnimationType.Choppy))
