@@ -45,7 +45,7 @@ namespace CrispPlus
     }
 
 
-    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.1.0.1")]
+    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.2.0.0")]
     public class CrispyPlugin : BaseUnityPlugin
     {
         internal static AssetManager assetMan = new AssetManager();
@@ -113,7 +113,9 @@ EnabledAlways - The indicator is shown regardless of which item you are holding.
             mapTweaksEnabled = Config.Bind("Map",
                 "Room Tweaks Enabled",
                 true,
-                "Determines if the room tweaks system is enabled. If you wish to disable a specific tweak, simply delete its associated json file in StreamingAssets/Modded/mtm101.rulerp.baldiplus.crispyplus/MapPack");
+                @"Determines if the room tweaks system is enabled.
+If you wish to disable a specific tweak, simply delete its associated json file in StreamingAssets/Modded/mtm101.rulerp.baldiplus.crispyplus/MapPack
+If you wish to disable a hardcoded tweak, just delete its associated png file in StreamingAssets/Modded/mtm101.rulerp.baldiplus.crispyplus/MapPack/Hardcoded");
             enforceSpriteConsistency = Config.Bind("Items",
                 "Enforce Sprite Consistency",
                 true,
@@ -317,12 +319,16 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             {
                 MapTweaksHandler.LoadFolder(mapPath);
                 // handle the singular manual tweak we have to do
-                Material powerOutMaterial = ObjectCreators.CreateMapTileShader(AssetLoader.TextureFromFile(Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png")));
-                FieldInfo _powerOffMapMaterial = AccessTools.Field(typeof(PowerLeverController), "powerOffMapMaterial");
-                PowerLeverController[] pwlcs = Resources.FindObjectsOfTypeAll<PowerLeverController>();
-                for (int i = 0; i < pwlcs.Length; i++)
+                string noPowerPath = Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png");
+                if (File.Exists(noPowerPath))
                 {
-                    _powerOffMapMaterial.SetValue(pwlcs[i], powerOutMaterial);
+                    Material powerOutMaterial = ObjectCreators.CreateMapTileShader(AssetLoader.TextureFromFile(Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png")));
+                    FieldInfo _powerOffMapMaterial = AccessTools.Field(typeof(PowerLeverController), "powerOffMapMaterial");
+                    PowerLeverController[] pwlcs = Resources.FindObjectsOfTypeAll<PowerLeverController>();
+                    for (int i = 0; i < pwlcs.Length; i++)
+                    {
+                        _powerOffMapMaterial.SetValue(pwlcs[i], powerOutMaterial);
+                    }
                 }
             }
 
