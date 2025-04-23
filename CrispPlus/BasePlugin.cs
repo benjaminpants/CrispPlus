@@ -316,7 +316,16 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             if (mapTweaksEnabled.Value)
             {
                 MapTweaksHandler.LoadFolder(mapPath);
+                // handle the singular manual tweak we have to do
+                Material powerOutMaterial = ObjectCreators.CreateMapTileShader(AssetLoader.TextureFromFile(Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png")));
+                FieldInfo _powerOffMapMaterial = AccessTools.Field(typeof(PowerLeverController), "powerOffMapMaterial");
+                PowerLeverController[] pwlcs = Resources.FindObjectsOfTypeAll<PowerLeverController>();
+                for (int i = 0; i < pwlcs.Length; i++)
+                {
+                    _powerOffMapMaterial.SetValue(pwlcs[i], powerOutMaterial);
+                }
             }
+
             if (aprilFoolsEnabled.Value)
             {
                 if (DateTime.Now.Day == 1 && DateTime.Now.Month == 4)
