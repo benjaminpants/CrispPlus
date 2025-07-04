@@ -45,7 +45,7 @@ namespace CrispPlus
     }
 
 
-    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.2.0.0")]
+    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.3.0.0")]
     public class CrispyPlugin : BaseUnityPlugin
     {
         internal static AssetManager assetMan = new AssetManager();
@@ -78,8 +78,9 @@ namespace CrispPlus
         void Awake()
         {
             Harmony harmony = new Harmony("mtm101.rulerp.baldiplus.crispyplus");
-            LoadingEvents.RegisterOnAssetsLoaded(Info, LoadEarlyEnumerator(), false);
-            LoadingEvents.RegisterOnAssetsLoaded(Info, LoadEnumerator(), true);
+            LoadingEvents.RegisterOnAssetsLoaded(Info, LoadEarlyEnumerator(), LoadingEventOrder.Pre);
+            LoadingEvents.RegisterOnAssetsLoaded(Info, LoadEnumerator(), LoadingEventOrder.Post);
+            LoadingEvents.RegisterOnAssetsLoaded(Info, LoadLastEnumerator(), LoadingEventOrder.Final);
             Log = Logger;
             Instance = this;
             slotAnimConfig = Config.Bind("Hud",
@@ -235,6 +236,29 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             transfm.MarkAsNeverUnload();
         }
 
+        IEnumerator LoadLastEnumerator()
+        {
+            yield return 1;
+            yield return "Loading Map Tweaks...";
+            string mapPath = Path.Combine(AssetLoader.GetModPath(this), "MapPack");
+            if (mapTweaksEnabled.Value)
+            {
+                MapTweaksHandler.LoadFolder(mapPath);
+                // handle the singular manual tweak we have to do
+                string noPowerPath = Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png");
+                if (File.Exists(noPowerPath))
+                {
+                    Material powerOutMaterial = ObjectCreators.CreateMapTileShader(AssetLoader.TextureFromFile(Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png")));
+                    FieldInfo _powerOffMapMaterial = AccessTools.Field(typeof(PowerLeverController), "powerOffMapMaterial");
+                    PowerLeverController[] pwlcs = Resources.FindObjectsOfTypeAll<PowerLeverController>();
+                    for (int i = 0; i < pwlcs.Length; i++)
+                    {
+                        _powerOffMapMaterial.SetValue(pwlcs[i], powerOutMaterial);
+                    }
+                }
+            }
+        }
+
         IEnumerator LoadEnumerator()
         {
             List<ItemObject> objectsWithInvalidSpriteSizes = new List<ItemObject>();
@@ -269,8 +293,7 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             }
 
             // figure out all the replacements we gotta do
-            string mapPath = Path.Combine(AssetLoader.GetModPath(this), "MapPack");
-            yield return objectsWithInvalidSpriteSizes.Count + bigSpritesToCreate.Count + smallSpritesToCreate.Count + 3;
+            yield return objectsWithInvalidSpriteSizes.Count + bigSpritesToCreate.Count + smallSpritesToCreate.Count + 2;
             yield return "Loading...";
             for (int i = 0; i < smallSpritesToCreate.Count; i++)
             {
@@ -311,23 +334,6 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
                     if (image.sprite.name == "YCTP_IndicatorsSheet_0" && image.rectTransform.sizeDelta == (Vector2.one * 32f))
                     {
                         image.sprite = CrispyPlugin.assetMan.Get<Sprite>("checkMark");
-                    }
-                }
-            }
-            yield return "Loading Map Tweaks...";
-            if (mapTweaksEnabled.Value)
-            {
-                MapTweaksHandler.LoadFolder(mapPath);
-                // handle the singular manual tweak we have to do
-                string noPowerPath = Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png");
-                if (File.Exists(noPowerPath))
-                {
-                    Material powerOutMaterial = ObjectCreators.CreateMapTileShader(AssetLoader.TextureFromFile(Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png")));
-                    FieldInfo _powerOffMapMaterial = AccessTools.Field(typeof(PowerLeverController), "powerOffMapMaterial");
-                    PowerLeverController[] pwlcs = Resources.FindObjectsOfTypeAll<PowerLeverController>();
-                    for (int i = 0; i < pwlcs.Length; i++)
-                    {
-                        _powerOffMapMaterial.SetValue(pwlcs[i], powerOutMaterial);
                     }
                 }
             }
