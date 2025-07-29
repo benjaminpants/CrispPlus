@@ -45,7 +45,7 @@ namespace CrispPlus
     }
 
 
-    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.3.0.0")]
+    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.3.0.1")]
     public class CrispyPlugin : BaseUnityPlugin
     {
         internal static AssetManager assetMan = new AssetManager();
@@ -162,7 +162,7 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             aprilFoolsEnabled = Config.Bind("Misc",
                 "April Fools Enabled",
                 true,
-                "Determines if the April Fools troll is enabled.");
+                "Determines if the April Fools troll is enabled on April Fools.");
             harmony.PatchAllConditionals();
         }
 

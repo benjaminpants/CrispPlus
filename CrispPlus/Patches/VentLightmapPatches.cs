@@ -30,6 +30,7 @@ namespace CrispPlus.Patches
         static void Postfix(EnvironmentController __instance)
         {
             __instance.gameObject.AddComponent<VentLightingHandler>();
+            if (VentLightingHandler.Instance == null) return;
             VentLightingHandler.Instance.InitializeVentLights();
             VentLightingHandler.Instance.ApplyLighting();
         }
@@ -43,6 +44,7 @@ namespace CrispPlus.Patches
     {
         static void Postfix()
         {
+            if (VentLightingHandler.Instance == null) return;
             VentLightingHandler.Instance.DoVentLighting();
         }
     }
@@ -76,6 +78,7 @@ namespace CrispPlus.Patches
         {
             if (__state)
             {
+                if (VentLightingHandler.Instance == null) return;
                 VentLightingHandler.Instance.DoVentLighting();
             }
         }
