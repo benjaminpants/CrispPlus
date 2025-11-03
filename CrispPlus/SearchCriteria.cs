@@ -59,6 +59,7 @@ namespace CrispPlus
     {
         public SearchCriteria[] searchCriterias = new SearchCriteria[0];
         public string textureName = "";
+        public string[] loaderIds = new string[0];
         public SerializableColor color = new SerializableColor();
     }
 }

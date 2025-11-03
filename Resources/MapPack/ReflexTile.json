@@ -1,8 +1,8 @@
 {
 	"searchCriterias": [
 		{
-			"searchType":"Name",
-			"searchValues":["Room_ReflexOffice_0"]
+			"searchType":"Character",
+			"searchValues":["DrReflex"]
 		}
 	],
 	"textureName":"MapBG_Doctor",

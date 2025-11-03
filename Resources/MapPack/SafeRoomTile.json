@@ -1,0 +1,15 @@
+{
+	"searchCriterias": [
+		{
+			"searchType":"RoomFunction",
+			"searchValues":["SafeRoomRoomFunction"]
+		}
+	],
+	"textureName":"MapBG_NoBaldi",
+	"color": {
+		"R":252,
+		"G":118,
+		"B":120,
+		"A":255
+	}
+}

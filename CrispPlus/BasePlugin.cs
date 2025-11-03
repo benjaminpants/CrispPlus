@@ -243,7 +243,7 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             string mapPath = Path.Combine(AssetLoader.GetModPath(this), "MapPack");
             if (mapTweaksEnabled.Value)
             {
-                MapTweaksHandler.LoadFolder(mapPath);
+                MapTweaksHandler.ApplyReplacements();
                 // handle the singular manual tweak we have to do
                 string noPowerPath = Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png");
                 if (File.Exists(noPowerPath))
@@ -293,7 +293,7 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             }
 
             // figure out all the replacements we gotta do
-            yield return objectsWithInvalidSpriteSizes.Count + bigSpritesToCreate.Count + smallSpritesToCreate.Count + 2;
+            yield return objectsWithInvalidSpriteSizes.Count + bigSpritesToCreate.Count + smallSpritesToCreate.Count + 2 + (mapTweaksEnabled.Value ? 1 : 0);
             yield return "Loading...";
             for (int i = 0; i < smallSpritesToCreate.Count; i++)
             {
@@ -322,6 +322,13 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
                 if (spriteReplacements.ContainsKey(objectsWithInvalidSpriteSizes[i].itemSpriteSmall)) objectsWithInvalidSpriteSizes[i].itemSpriteSmall = spriteReplacements[objectsWithInvalidSpriteSizes[i].itemSpriteSmall];
                 if (spriteBigReplacements.ContainsKey(objectsWithInvalidSpriteSizes[i].itemSpriteLarge)) objectsWithInvalidSpriteSizes[i].itemSpriteLarge = spriteBigReplacements[objectsWithInvalidSpriteSizes[i].itemSpriteLarge];
             }
+            if (mapTweaksEnabled.Value)
+            {
+                yield return "Loading map overrides...";
+                string mapPath = Path.Combine(AssetLoader.GetModPath(this), "MapPack");
+                MapTweaksHandler.LoadOverridesFolder(mapPath);
+            }
+
             yield return "Loading and applying misc tweaks...";
             // do this here incase we can snag any prefabs that do the same thing
             if (optionsMenuCheckmarkFix.Value)
