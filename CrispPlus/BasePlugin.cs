@@ -45,7 +45,7 @@ namespace CrispPlus
     }
 
 
-    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.4.0.0")]
+    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.4.0.1")]
     public class CrispyPlugin : BaseUnityPlugin
     {
         internal static AssetManager assetMan = new AssetManager();
@@ -68,7 +68,6 @@ namespace CrispPlus
         ConfigEntry<bool> mapTweaksEnabled;
         ConfigEntry<bool> enforceSpriteConsistency;
         ConfigEntry<bool> optionsMenuCheckmarkFix;
-        ConfigEntry<bool> aprilFoolsEnabled;
         public ConfigEntry<float> itemAnimationSpeed;
 
         ConfigEntry<bool> ventLightFixEnabled;
@@ -159,10 +158,6 @@ Choppy - Chalkles fades in choppily.
 Dither - Chalkles will fade in with a dither in akin to the transitions seen in menus.
 DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.");
 
-            aprilFoolsEnabled = Config.Bind("Misc",
-                "April Fools Enabled",
-                true,
-                "Determines if the April Fools troll is enabled on April Fools.");
             harmony.PatchAllConditionals();
         }
 
@@ -238,29 +233,6 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
 
         IEnumerator LoadLastEnumerator()
         {
-            yield return 1;
-            yield return "Loading Map Tweaks...";
-            string mapPath = Path.Combine(AssetLoader.GetModPath(this), "MapPack");
-            if (mapTweaksEnabled.Value)
-            {
-                MapTweaksHandler.ApplyReplacements();
-                // handle the singular manual tweak we have to do
-                string noPowerPath = Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png");
-                if (File.Exists(noPowerPath))
-                {
-                    Material powerOutMaterial = ObjectCreators.CreateMapTileShader(AssetLoader.TextureFromFile(Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png")));
-                    FieldInfo _powerOffMapMaterial = AccessTools.Field(typeof(PowerLeverController), "powerOffMapMaterial");
-                    PowerLeverController[] pwlcs = Resources.FindObjectsOfTypeAll<PowerLeverController>();
-                    for (int i = 0; i < pwlcs.Length; i++)
-                    {
-                        _powerOffMapMaterial.SetValue(pwlcs[i], powerOutMaterial);
-                    }
-                }
-            }
-        }
-
-        IEnumerator LoadEnumerator()
-        {
             List<ItemObject> objectsWithInvalidSpriteSizes = new List<ItemObject>();
             Dictionary<Sprite, Sprite> spriteReplacements = new Dictionary<Sprite, Sprite>();
             Dictionary<Sprite, Sprite> spriteBigReplacements = new Dictionary<Sprite, Sprite>();
@@ -293,7 +265,7 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             }
 
             // figure out all the replacements we gotta do
-            yield return objectsWithInvalidSpriteSizes.Count + bigSpritesToCreate.Count + smallSpritesToCreate.Count + 2 + (mapTweaksEnabled.Value ? 1 : 0);
+            yield return objectsWithInvalidSpriteSizes.Count + bigSpritesToCreate.Count + smallSpritesToCreate.Count + 1 + (mapTweaksEnabled.Value ? 1 : 0);
             yield return "Loading...";
             for (int i = 0; i < smallSpritesToCreate.Count; i++)
             {
@@ -302,7 +274,7 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
                 scaled.name = smallSpritesToCreate[i].texture.name + "_CrispySScaled";
                 scaled.filterMode = FilterMode.Point;
                 Graphics.ConvertTexture(smallSpritesToCreate[i].texture, scaled);
-                scaled.ReadPixels(new Rect(0f,0f,32f,32f), 0, 0, false); // unsure if necessary?
+                scaled.ReadPixels(new Rect(0f, 0f, 32f, 32f), 0, 0, false); // unsure if necessary?
                 spriteReplacements.Add(smallSpritesToCreate[i], AssetLoader.SpriteFromTexture2D(scaled, 25f));
             }
             for (int i = 0; i < bigSpritesToCreate.Count; i++)
@@ -324,6 +296,31 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             }
             if (mapTweaksEnabled.Value)
             {
+                yield return "Loading Map Tweaks...";
+                string mapPath = Path.Combine(AssetLoader.GetModPath(this), "MapPack");
+                MapTweaksHandler.ApplyReplacements();
+                // handle the singular manual tweak we have to do
+                string noPowerPath = Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png");
+                if (File.Exists(noPowerPath))
+                {
+                    Material powerOutMaterial = ObjectCreators.CreateMapTileShader(AssetLoader.TextureFromFile(Path.Combine(mapPath, "Hardcoded", "MapBG_NoPower.png")));
+                    FieldInfo _powerOffMapMaterial = AccessTools.Field(typeof(PowerLeverController), "powerOffMapMaterial");
+                    PowerLeverController[] pwlcs = Resources.FindObjectsOfTypeAll<PowerLeverController>();
+                    for (int i = 0; i < pwlcs.Length; i++)
+                    {
+                        _powerOffMapMaterial.SetValue(pwlcs[i], powerOutMaterial);
+                    }
+                }
+            }
+        }
+
+        IEnumerator LoadEnumerator()
+        {
+            yield return 2 + (mapTweaksEnabled.Value ? 1 : 0);
+            yield return "Loading...";
+
+            if (mapTweaksEnabled.Value)
+            {
                 yield return "Loading map overrides...";
                 string mapPath = Path.Combine(AssetLoader.GetModPath(this), "MapPack");
                 MapTweaksHandler.LoadOverridesFolder(mapPath);
@@ -342,16 +339,6 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
                     {
                         image.sprite = CrispyPlugin.assetMan.Get<Sprite>("checkMark");
                     }
-                }
-            }
-
-            if (aprilFoolsEnabled.Value)
-            {
-                if (DateTime.Now.Day == 1 && DateTime.Now.Month == 4)
-                {
-                    Resources.FindObjectsOfTypeAll<Texture2D>().Do(x => x.filterMode = FilterMode.Trilinear);
-                    TMP_FontAsset ass = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().First(x => x.name.Contains("Lib"));
-                    Resources.FindObjectsOfTypeAll<TMP_Text>().Do(x => x.font = ass);
                 }
             }
             yield return "Modifying prefabs...";
