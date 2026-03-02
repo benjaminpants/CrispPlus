@@ -21,7 +21,7 @@ namespace CrispPlus.Patches
 
                 if (mapTile.SpriteRenderer == null) continue;
                 if (mapTile.SpriteRenderer.sprite == null) continue;
-                if (mapTile.SpriteRenderer.sprite.name.StartsWith("Icon_Door"))
+                if (mapTile.SpriteRenderer.sprite.name.StartsWith("Icon_Door") || mapTile.SpriteRenderer.sprite.name.StartsWith("Icon_Window"))
                     mapTile.SpriteRenderer.color = room.color;
             }
         }
