@@ -5,6 +5,9 @@
 			"searchValues":["PlaygroundRoomFunction"]
 		}
 	],
+	"loaderIds": [
+		"outside"
+	],
 	"textureName":"MapBG_Playground",
 	"color": {
 		"R":0,

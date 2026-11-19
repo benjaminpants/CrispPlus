@@ -2,10 +2,13 @@
 	"searchCriterias": [
 		{
 			"searchType":"RoomFunction",
-			"searchValues":["BeltRoomFunction"]
+			"searchValues":["CraneRoomFunction"]
 		}
 	],
-	"textureName":"MapBG_Conveyor",
+	"loaderIds": [
+		"crane"
+	],
+	"textureName":"MapBG_Cranes",
 	"color": {
 		"R":0,
 		"G":255,

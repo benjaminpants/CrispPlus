@@ -5,6 +5,9 @@
 			"searchValues":["LightbulbTestRoomFunction"]
 		}
 	],
+	"loaderIds": [
+		"lightbulbtesting"
+	],
 	"textureName":"MapBG_LightbulbTesting",
 	"color": {
 		"R":0,

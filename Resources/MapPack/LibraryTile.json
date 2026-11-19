@@ -5,6 +5,9 @@
 			"searchValues":["LibraryRoomFunction"]
 		}
 	],
+	"loaderIds": [
+		"library"
+	],
 	"textureName":"MapBG_Mute",
 	"color": {
 		"R":0,

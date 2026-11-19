@@ -3,6 +3,7 @@ using MTM101BaldAPI;
 using MTM101BaldAPI.AssetTools;
 using MTM101BaldAPI.Registers;
 using Newtonsoft.Json;
+using PlusStudioLevelLoader;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,8 +33,26 @@ namespace CrispPlus
             foreach (RoomOverride over in overrides)
             {
                 MapTweaksHandler.overrides.Add(over);
+                if (string.IsNullOrEmpty(over.textureName)) continue;
                 if (mapMaterials.ContainsKey(over.textureName)) continue;
                 mapMaterials.Add(over.textureName, ObjectCreators.CreateMapTileShader(textureMap[over.textureName]));
+            }
+        }
+
+        public static void HandleLoaderRoomOverride(RoomOverride over)
+        {
+            if (over.loaderIds.Length == 0) return;
+            foreach (string id in over.loaderIds)
+            {
+                if (!LevelLoaderPlugin.Instance.roomSettings.ContainsKey(id)) continue;
+                RoomSettings rs = LevelLoaderPlugin.Instance.roomSettings[id];
+                Material roomMat = null;
+                if (!string.IsNullOrEmpty(over.textureName))
+                {
+                    roomMat = mapMaterials[over.textureName];
+                }
+                rs.mapMaterial = (roomMat == null) ? rs.mapMaterial : roomMat;
+                rs.color = Color.Lerp(rs.color, over.color, over.color.A / 255f);
             }
         }
 
@@ -41,6 +60,10 @@ namespace CrispPlus
         {
             foreach (RoomOverride over in overrides)
             {
+                if (CrispyPlugin.Instance.levelLoaderEnabled && CrispyPlugin.Instance.loader_mapChanges.Value)
+                {
+                    HandleLoaderRoomOverride(over);
+                }
                 RoomAsset[] assets = over.searchCriterias.PerformSearch();
                 if (assets.Length == 0) continue; //saves time
                 Material roomMat = null;

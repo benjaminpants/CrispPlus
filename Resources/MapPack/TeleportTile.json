@@ -5,7 +5,12 @@
 			"searchValues":["TeleporterRoomFunction"]
 		}
 	],
-	"textureName":"MapBG_Teleport",
+	"loaderIds": [
+		"teleportroom_1",
+		"teleportroom_2",
+		"teleportroom_3",
+		"teleportroom_4"
+	],
 	"color": {
 		"R":45,
 		"G":77,

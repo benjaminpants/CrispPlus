@@ -5,6 +5,9 @@
 			"searchValues":["Sweep"]
 		}
 	],
+	"loaderIds": [
+		"closet"
+	],
 	"textureName":"MapBG_Supplies",
 	"color": {
 		"R":0,

@@ -5,6 +5,9 @@
 			"searchValues":["WormholeRoomFunction"]
 		}
 	],
+	"loaderIds": [
+		"wormhole_room"
+	],
 	"textureName":"MapBG_Wormhole",
 	"color": {
 		"R":0,

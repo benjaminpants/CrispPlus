@@ -1,12 +1,15 @@
 ﻿using BepInEx;
+using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using CrispPlus.Patches;
 using HarmonyLib;
 using MTM101BaldAPI;
 using MTM101BaldAPI.AssetTools;
+using MTM101BaldAPI.PlusExtensions;
 using MTM101BaldAPI.Reflection;
 using MTM101BaldAPI.Registers;
+using PlusStudioLevelLoader;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,6 +18,7 @@ using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace CrispPlus
@@ -36,16 +40,8 @@ namespace CrispPlus
     }
 
 
-    public enum ChalklesAnimationType
-    {
-        Vanilla = 0,
-        Dither = 1,
-        Choppy = 2,
-        DitherAndChoppy = 3
-    }
-
-
-    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.5.0.0")]
+    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.6.0.0")]
+    [BepInDependency("mtm101.rulerp.baldiplus.levelstudioloader", BepInDependency.DependencyFlags.SoftDependency)]
     public class CrispyPlugin : BaseUnityPlugin
     {
         internal static AssetManager assetMan = new AssetManager();
@@ -57,9 +53,6 @@ namespace CrispPlus
         public ConfigEntry<ItemSlotAnimationType> slotAnimConfig;
         public ConfigEntry<bool> itemReticleAllowLeftClick;
         public ConfigEntry<ItemReticleType> itemReticleDisplay;
-        public ConfigEntry<ChalklesAnimationType> chalklesType;
-
-        public Sprite[] chalklesSprites = new Sprite[0];
 
         public Texture2D ventLightmap;
 
@@ -69,10 +62,85 @@ namespace CrispPlus
         ConfigEntry<bool> enforceSpriteConsistency;
         ConfigEntry<bool> optionsMenuCheckmarkFix;
         public ConfigEntry<float> itemAnimationSpeed;
+        ConfigEntry<bool> hallDoorTexture;
+        ConfigEntry<bool> safeRoomDoorFix;
+        ConfigEntry<bool> doorConsistency;
 
         ConfigEntry<bool> ventLightFixEnabled;
 
         ConfigEntry<float> ventBrightnessMultiplier;
+
+        public ConfigEntry<bool> loader_hallDoor;
+        public ConfigEntry<bool> loader_mapChanges;
+
+        public StandardDoorMats hallwayDoorMat;
+        public Dictionary<Texture2D, Texture2D[]> hallwayDoorWallToRecolored = new Dictionary<Texture2D, Texture2D[]>();
+
+        public bool levelLoaderEnabled = false;
+
+        public Texture2D GetOrGenerateColoredTexture(Texture2D wall, bool open)
+        {
+            if (hallwayDoorWallToRecolored.ContainsKey(wall))
+            {
+                return hallwayDoorWallToRecolored[wall][open ? 1 : 0];
+            }
+            double averageR = 0f;
+            double averageG = 0f;
+            double averageB = 0f;
+
+            // get average color
+            foreach (Color pixel in wall.GetPixels(0,0, wall.width, wall.height))
+            {
+                if (pixel.a < 1f) continue;
+                averageR += pixel.r;
+                averageG += pixel.g;
+                averageB += pixel.b;
+            }
+
+            averageR /= wall.width * wall.height;
+            averageG /= wall.width * wall.height;
+            averageB /= wall.width * wall.height;
+
+            Color averageColor = new Color((float)averageR, (float)averageG, (float)averageB);
+
+            hallwayDoorWallToRecolored.Add(wall, new Texture2D[]
+            {
+                RecolorGraphic(wall.name + "_HallDoorShut", hallwayDoorMat.shutPosterData.baseTexture, averageColor),
+                RecolorGraphic(wall.name + "_HallDoorOpen", hallwayDoorMat.openPosterData.baseTexture, averageColor),
+            });
+            return hallwayDoorWallToRecolored[wall][open ? 1 : 0];
+        }
+
+        private Texture2D RecolorGraphic(string name, Texture2D tex, Color color)
+        {
+            Color[] result = tex.GetPixels(0, 0, tex.width, tex.height);
+
+            for (int i = 0; i < result.Length; i++)
+            {
+                result[i] = result[i] * color;
+            }
+            Texture2D newTex = new Texture2D(256, 256, TextureFormat.RGBA32, false);
+            newTex.filterMode = FilterMode.Point;
+            newTex.SetPixels(result);
+            newTex.Apply();
+            newTex.name = name;
+            return newTex;
+        }
+
+        void ModifyGenerator(string fName, int fId, SceneObject scene)
+        {
+            CustomLevelObject[] levelObjects = scene.GetCustomLevelObjects();
+            foreach (CustomLevelObject item in levelObjects)
+            {
+                if (item.standardDoorMat == null) continue;
+                if (item.standardDoorMat.name != "ClassDoorSet") continue;
+                item.standardDoorMat = hallwayDoorMat;
+                foreach (WeightedTexture2D tex in item.hallWallTexs)
+                {
+                    GetOrGenerateColoredTexture(tex.selection, false);
+                }
+            }
+        }
 
         void Awake()
         {
@@ -80,6 +148,8 @@ namespace CrispPlus
             LoadingEvents.RegisterOnAssetsLoaded(Info, LoadEarlyEnumerator(), LoadingEventOrder.Pre);
             LoadingEvents.RegisterOnAssetsLoaded(Info, LoadEnumerator(), LoadingEventOrder.Post);
             LoadingEvents.RegisterOnAssetsLoaded(Info, LoadLastEnumerator(), LoadingEventOrder.Final);
+            levelLoaderEnabled = Chainloader.PluginInfos.ContainsKey("mtm101.rulerp.baldiplus.levelstudioloader");
+
             Log = Logger;
             Instance = this;
             slotAnimConfig = Config.Bind("Hud",
@@ -134,6 +204,11 @@ If you wish to disable a hardcoded tweak, just delete its associated png file in
                 false,
                 "If enabled, the item/pickup bobbing animation will be pixel locked, making it look choppier.");
 
+            safeRoomDoorFix = Config.Bind("World",
+                "Saferoom Door Fix",
+                true,
+                "Fixes the saferoom door having its graphic mirrored when the door sprite is mirrored");
+
             ventLightFixEnabled = Config.Bind("World",
                 "Vent Light Fix",
                 true,
@@ -149,14 +224,30 @@ If you wish to disable a hardcoded tweak, just delete its associated png file in
                 1f,
                 "The multiplier for the vent brightness.\nRequires Vent Light Fix to work.");
 
-            chalklesType = Config.Bind("NPCs",
-                "Chalkles Fade Animation",
-                ChalklesAnimationType.Dither,
-                @"The type of alternate animation/fade type Chalkles will use.
-Vanilla - Chalkles fades in smoothly.
-Choppy - Chalkles fades in choppily.
-Dither - Chalkles will fade in with a dither in akin to the transitions seen in menus.
-DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.");
+            hallDoorTexture = Config.Bind("World",
+                "Custom Hall Door",
+                false,
+                "Adds a custom door texture for hallways instead of reusing the classroom door.");
+
+            doorConsistency = Config.Bind("World",
+                "Door Texture Fixes",
+                true,
+                "Modifies the Supplies/orange door and Principal/yellow door textures to have the text in the correct place. May not work if texture packs is installed.");
+
+            if (hallDoorTexture.Value)
+            {
+                GeneratorManagement.Register(this, GenerationModType.Finalizer, ModifyGenerator);
+            }
+
+            loader_hallDoor = Config.Bind("Compatability",
+                "Custom Hall Door In Loader",
+                true,
+                "If custom hall door is enabled and this setting is enabled, it will be added to Level Loader/Studio levels");
+
+            loader_mapChanges = Config.Bind("Compatability",
+                "Map Changes In Loader",
+                true,
+                "Non-hardcoded map changes will be added to Level Loader/Studio levels if this setting is enabled.");
 
             harmony.PatchAllConditionals();
         }
@@ -170,7 +261,7 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
 
         IEnumerator LoadEarlyEnumerator()
         {
-            yield return 1 + (ventLightFixEnabled.Value ? 1 : 0) + (chalklesType.Value.HasFlag(ChalklesAnimationType.Dither) ? 1 : 0);
+            yield return 1 + (ventLightFixEnabled.Value ? 1 : 0) + (hallDoorTexture.Value ? 1 : 0) + (doorConsistency.Value ? 1 : 0);
             yield return "Loading misc changes...";
             if (dietBSODAChangeEnabled.Value)
             {
@@ -209,18 +300,82 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
                 ventMat.SetColor("_TextureColor", new Color(1f, 1f, 1f, 0f));
                 ventMat.SetTexture("_LightMap", ventLightmap);
             }
-            if (chalklesType.Value.HasFlag(ChalklesAnimationType.Dither))
+            if (doorConsistency.Value)
             {
-                yield return "Loading Chalkles frames...";
-                Sprite chalklesBase = Resources.FindObjectsOfTypeAll<Sprite>().First(x => x.GetInstanceID() >= 0 && x.name == "ChalkFace");
-                List<Sprite> chalklesFrames = new List<Sprite>();
-                for (int i = 0; i < 6; i++)
-                {
-                    chalklesFrames.Add(AssetLoader.SpriteFromMod(this, chalklesBase.pivot / chalklesBase.rect.size, chalklesBase.pixelsPerUnit, "Chalkles", "ChalkFade" + (i + 1) + ".png"));
-                }
-                chalklesFrames.Add(chalklesBase);
-                chalklesSprites = chalklesFrames.ToArray();
+                yield return "Loading door consistency textures...";
+                AssetLoader.ReplaceAllTexturesFromFolder(Path.Combine(AssetLoader.GetModPath(this), "DoorConsistency"));
             }
+            if (hallDoorTexture.Value)
+            {
+                yield return "Loading hallway door...";
+                Texture2D openDoorknob = AssetLoader.TextureFromMod(this, "HallDoor_Open_Knob.png");
+                Texture2D shutDoorknob = AssetLoader.TextureFromMod(this, "HallDoor_Closed_Knob.png");
+                ExtendedPosterObject openPoster = ScriptableObject.CreateInstance<ExtendedPosterObject>();
+                ExtendedPosterObject shutPoster = ScriptableObject.CreateInstance<ExtendedPosterObject>();
+                openPoster.name = "HallwayDoor_Open_PosterObject";
+                shutPoster.name = "HallwayDoor_Shut_PosterObject";
+                openPoster.baseTexture = AssetLoader.TextureFromMod(this, "HallDoor_Open_Base.png");
+                shutPoster.baseTexture = AssetLoader.TextureFromMod(this, "HallDoor_Closed_Base.png");
+
+                openPoster.overlayData = new PosterImageData[]
+                {
+                    new PosterImageData()
+                    {
+                        position = new IntVector2(0,0),
+                        size = new IntVector2(256,256),
+                        texture = openDoorknob
+                    }
+                };
+
+                shutPoster.overlayData = new PosterImageData[]
+                {
+                    new PosterImageData()
+                    {
+                        position = new IntVector2(0,0),
+                        size = new IntVector2(256,256),
+                        texture = shutDoorknob
+                    }
+                };
+
+                ExtendedPosterObject openPosterMirror = ScriptableObject.CreateInstance<ExtendedPosterObject>();
+                openPosterMirror.name = "HallwayDoor_Mirror_Open_PosterObject";
+                openPosterMirror.baseTexture = openPoster.baseTexture;
+                openPosterMirror.baseTextureMirrored = true;
+                openPoster.mirroredPoster = openPosterMirror;
+
+                openPosterMirror.overlayData = new PosterImageData[]
+                {
+                    new PosterImageData()
+                    {
+                        position = new IntVector2(256,0),
+                        size = new IntVector2(-256,256),
+                        texture = openDoorknob
+                    }
+                };
+
+                ExtendedPosterObject shutPosterMirror = ScriptableObject.CreateInstance<ExtendedPosterObject>();
+                shutPosterMirror.name = "HallwayDoor_Mirror_Shut_PosterObject";
+                shutPosterMirror.baseTexture = shutPoster.baseTexture;
+                shutPosterMirror.baseTextureMirrored = true;
+                shutPoster.mirroredPoster = shutPosterMirror;
+
+                shutPosterMirror.overlayData = new PosterImageData[]
+                {
+                    new PosterImageData()
+                    {
+                        position = new IntVector2(256,0),
+                        size = new IntVector2(-256,256),
+                        texture = shutDoorknob
+                    }
+                };
+
+                hallwayDoorMat = ObjectCreators.CreateDoorDataObject("HallwayDoor", openPoster, shutPoster);
+            }
+        }
+
+        void HandleLoaderHallwayDoorStuff()
+        {
+            LevelLoaderPlugin.Instance.roomSettings["hall"].doorMat = hallwayDoorMat;
         }
 
         void UpdateVentRenderer(Transform transfm)
@@ -267,6 +422,11 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
             // figure out all the replacements we gotta do
             yield return objectsWithInvalidSpriteSizes.Count + bigSpritesToCreate.Count + smallSpritesToCreate.Count + 1 + (mapTweaksEnabled.Value ? 1 : 0);
             yield return "Loading...";
+            if (levelLoaderEnabled && hallwayDoorMat != null && loader_hallDoor.Value)
+            {
+                HandleLoaderHallwayDoorStuff();
+            }
+
             for (int i = 0; i < smallSpritesToCreate.Count; i++)
             {
                 yield return "Creating Small Sprite: " + smallSpritesToCreate[i];
@@ -340,6 +500,32 @@ DitherAndChoppy - Chalkles will fade in choppily and be dithered while doing so.
                         image.sprite = CrispyPlugin.assetMan.Get<Sprite>("checkMark");
                     }
                 }
+            }
+            if (safeRoomDoorFix.Value)
+            {
+                StandardDoorMats safeRoomDoorMat = Resources.FindObjectsOfTypeAll<StandardDoorMats>().First(x => x.IsPrefab() && x.name == "SafeRoomDoorSet");
+                Texture2D openTex = safeRoomDoorMat.openPosterData.baseTexture;
+                string openName = safeRoomDoorMat.openPosterData.name;
+                Destroy(safeRoomDoorMat.openPosterData);
+                ExtendedPosterObject openPoster = ScriptableObject.CreateInstance<ExtendedPosterObject>();
+                safeRoomDoorMat.openPosterData = openPoster;
+                openPoster.baseTexture = openTex;
+                openPoster.name = openName;
+                openPoster.mirroredPoster = ScriptableObject.CreateInstance<PosterObject>();
+                openPoster.mirroredPoster.name = openName + "_Mirrored";
+                openPoster.mirroredPoster.baseTexture = AssetLoader.TextureFromMod(this, "MirroredSafeRoomDoor_Open.png");
+
+                Texture2D shutTex = safeRoomDoorMat.shutPosterData.baseTexture;
+                string shutName = safeRoomDoorMat.shutPosterData.name;
+                Destroy(safeRoomDoorMat.shutPosterData);
+                ExtendedPosterObject shutPoster = ScriptableObject.CreateInstance<ExtendedPosterObject>();
+                safeRoomDoorMat.shutPosterData = shutPoster;
+                shutPoster.baseTexture = shutTex;
+                shutPoster.name = shutName;
+                shutPoster.mirroredPoster = ScriptableObject.CreateInstance<PosterObject>();
+                shutPoster.mirroredPoster.name = shutName + "_Mirrored";
+                shutPoster.mirroredPoster.baseTexture = AssetLoader.TextureFromMod(this, "MirroredSafeRoomDoor_Closed.png");
+
             }
             yield return "Modifying prefabs...";
             FieldInfo _reticle = AccessTools.Field(typeof(HudManager), "reticle");

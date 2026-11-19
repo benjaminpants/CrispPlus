@@ -5,6 +5,9 @@
 			"searchValues":["DrReflex"]
 		}
 	],
+	"loaderIds": [
+		"reflex"
+	],
 	"textureName":"MapBG_Doctor",
 	"color": {
 		"R":193,

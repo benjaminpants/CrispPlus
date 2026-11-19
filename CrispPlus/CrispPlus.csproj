@@ -29,6 +29,12 @@
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\Dependencies\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="PlusStudioLevelFormat">
+      <HintPath>..\Dependencies\PlusStudioLevelFormat.dll</HintPath>
+    </Reference>
+    <Reference Include="PlusStudioLevelLoader">
+      <HintPath>..\Dependencies\PlusStudioLevelLoader.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>..\Dependencies\Unity.TextMeshPro.dll</HintPath>
     </Reference>

@@ -6,6 +6,9 @@
 		}
 	],
 	"textureName":"MapBG_NoBaldi",
+	"loaderIds": [
+		"saferoom"
+	],
 	"color": {
 		"R":252,
 		"G":118,
