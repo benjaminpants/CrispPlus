@@ -40,7 +40,7 @@ namespace CrispPlus
     }
 
 
-    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.6.0.0")]
+    [BepInPlugin("mtm101.rulerp.baldiplus.crispyplus", "Crispy+", "2.6.0.1")]
     [BepInDependency("mtm101.rulerp.baldiplus.levelstudioloader", BepInDependency.DependencyFlags.SoftDependency)]
     public class CrispyPlugin : BaseUnityPlugin
     {
@@ -64,7 +64,6 @@ namespace CrispPlus
         public ConfigEntry<float> itemAnimationSpeed;
         ConfigEntry<bool> hallDoorTexture;
         ConfigEntry<bool> safeRoomDoorFix;
-        ConfigEntry<bool> doorConsistency;
 
         ConfigEntry<bool> ventLightFixEnabled;
 
@@ -133,8 +132,7 @@ namespace CrispPlus
             foreach (CustomLevelObject item in levelObjects)
             {
                 if (item.standardDoorMat == null) continue;
-                if (item.standardDoorMat.name != "ClassDoorSet") continue;
-                item.standardDoorMat = hallwayDoorMat;
+                if (item.standardDoorMat.name != "DefaultDoorSet") continue;
                 foreach (WeightedTexture2D tex in item.hallWallTexs)
                 {
                     GetOrGenerateColoredTexture(tex.selection, false);
@@ -229,11 +227,6 @@ If you wish to disable a hardcoded tweak, just delete its associated png file in
                 false,
                 "Adds a custom door texture for hallways instead of reusing the classroom door.");
 
-            doorConsistency = Config.Bind("World",
-                "Door Texture Fixes",
-                true,
-                "Modifies the Supplies/orange door and Principal/yellow door textures to have the text in the correct place. May not work if texture packs is installed.");
-
             if (hallDoorTexture.Value)
             {
                 GeneratorManagement.Register(this, GenerationModType.Finalizer, ModifyGenerator);
@@ -261,7 +254,7 @@ If you wish to disable a hardcoded tweak, just delete its associated png file in
 
         IEnumerator LoadEarlyEnumerator()
         {
-            yield return 1 + (ventLightFixEnabled.Value ? 1 : 0) + (hallDoorTexture.Value ? 1 : 0) + (doorConsistency.Value ? 1 : 0);
+            yield return 1 + (ventLightFixEnabled.Value ? 1 : 0) + (hallDoorTexture.Value ? 1 : 0);
             yield return "Loading misc changes...";
             if (dietBSODAChangeEnabled.Value)
             {
@@ -300,14 +293,10 @@ If you wish to disable a hardcoded tweak, just delete its associated png file in
                 ventMat.SetColor("_TextureColor", new Color(1f, 1f, 1f, 0f));
                 ventMat.SetTexture("_LightMap", ventLightmap);
             }
-            if (doorConsistency.Value)
-            {
-                yield return "Loading door consistency textures...";
-                AssetLoader.ReplaceAllTexturesFromFolder(Path.Combine(AssetLoader.GetModPath(this), "DoorConsistency"));
-            }
             if (hallDoorTexture.Value)
             {
                 yield return "Loading hallway door...";
+                hallwayDoorMat = Resources.FindObjectsOfTypeAll<StandardDoorMats>().First(x => x.name == "DefaultDoorSet");
                 Texture2D openDoorknob = AssetLoader.TextureFromMod(this, "HallDoor_Open_Knob.png");
                 Texture2D shutDoorknob = AssetLoader.TextureFromMod(this, "HallDoor_Closed_Knob.png");
                 ExtendedPosterObject openPoster = ScriptableObject.CreateInstance<ExtendedPosterObject>();
@@ -369,13 +358,15 @@ If you wish to disable a hardcoded tweak, just delete its associated png file in
                     }
                 };
 
-                hallwayDoorMat = ObjectCreators.CreateDoorDataObject("HallwayDoor", openPoster, shutPoster);
-            }
-        }
+                Destroy(hallwayDoorMat.openPosterData);
+                Destroy(hallwayDoorMat.shutPosterData);
+                hallwayDoorMat.openPosterData = openPoster;
+                hallwayDoorMat.shutPosterData = shutPoster;
+                hallwayDoorMat.open.SetMainTexture(openPoster.baseTexture);
+                hallwayDoorMat.shut.SetMainTexture(shutPoster.baseTexture);
 
-        void HandleLoaderHallwayDoorStuff()
-        {
-            LevelLoaderPlugin.Instance.roomSettings["hall"].doorMat = hallwayDoorMat;
+                //hallwayDoorMat = ObjectCreators.CreateDoorDataObject("HallwayDoor", openPoster, shutPoster);
+            }
         }
 
         void UpdateVentRenderer(Transform transfm)
@@ -422,10 +413,6 @@ If you wish to disable a hardcoded tweak, just delete its associated png file in
             // figure out all the replacements we gotta do
             yield return objectsWithInvalidSpriteSizes.Count + bigSpritesToCreate.Count + smallSpritesToCreate.Count + 1 + (mapTweaksEnabled.Value ? 1 : 0);
             yield return "Loading...";
-            if (levelLoaderEnabled && hallwayDoorMat != null && loader_hallDoor.Value)
-            {
-                HandleLoaderHallwayDoorStuff();
-            }
 
             for (int i = 0; i < smallSpritesToCreate.Count; i++)
             {
